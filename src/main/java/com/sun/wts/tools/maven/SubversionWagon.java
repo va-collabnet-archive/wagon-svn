@@ -83,6 +83,7 @@ import java.util.EmptyStackException;
  * this means we need to use two {@link SVNRepository}s.
  *
  * @author Kohsuke Kawaguchi
+ * @author Dan Armbrust (hacked in support for setting mime types for common web formats based on file extensions.)
  */
 public class SubversionWagon extends AbstractWagon {
     /**
@@ -98,6 +99,8 @@ public class SubversionWagon extends AbstractWagon {
     private String rootPath;
 
     private ISVNEditor editor;
+    
+    private static HashMap<String, String> mimeTypes = new HashMap<String, String>();
 
     /**
      * Paths added by the commit editor that {@link #queryRepo} can't see yet.
@@ -313,6 +316,16 @@ public class SubversionWagon extends AbstractWagon {
                 editor.addFile(filePath,null,-1);
 
             editor.applyTextDelta(filePath,null);
+            int index = source.getName().lastIndexOf('.') + 1;
+            if (index < source.getName().length()) {
+                String extension = source.getName().substring(index);
+                if (extension.length() > 0) {
+                    String mimeType = mimeTypes.get(extension.toLowerCase());
+                    if (mimeType != null && mimeType.length() > 0) {
+                        editor.changeFileProperty(filePath, "svn:mime-type", mimeType);
+                    }
+                }
+            }
 
             SVNDeltaGenerator dg = new SVNDeltaGenerator();
             FileInputStream fin = new FileInputStream(source);
@@ -375,5 +388,15 @@ public class SubversionWagon extends AbstractWagon {
         DAVRepositoryFactory.setup();   // http, https
         SVNRepositoryFactoryImpl.setup();   // svn, svn+xxx
         FSRepositoryFactory.setup();    // file
+        mimeTypes.put("html", "text/html");
+        mimeTypes.put("htm", "text/html");
+        mimeTypes.put("css", "text/css");
+        mimeTypes.put("xhtml", "application/xhtml+xml");
+        mimeTypes.put("png", "image/png");
+        mimeTypes.put("jpg", "image/jpeg");
+        mimeTypes.put("jpeg", "image/jpeg");
+        mimeTypes.put("gif", "image/gif");
+        mimeTypes.put("pdf", "application/pdf");
+        mimeTypes.put("xml", "text/xml");
     }
 }
